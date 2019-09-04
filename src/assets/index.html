@@ -3,6 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="http://neo4j-contrib.github.io/developer-resources/language-guides/assets/css/main.css">
+	<link rel="stylesheet" href="../src/assets/style.css">
 </head>
 
 <body>
@@ -58,13 +59,19 @@
         <div class="panel panel-default">
             <div class="panel-heading" id="public-key">Transaction Details</div>
             <div class="row">
-                <div class="col-md-8 col-sm-8">
-                    <h4>Customer</h4>
+                <div class="col-md-5 col-sm-5">
+                    <h4>Bitcoin Sent</h4>
                     <ul id="traders">
                     </ul>
                 </div>
-            </div>
-        </div>
+			
+				<div class="col-md-5 col-sm-5">
+					<h4>Bitcoin Received</h4>
+					<ul id="received">
+					</ul>
+				</div>
+			</div>
+		</div>
     </div>
 </div>
 <style type="text/css">

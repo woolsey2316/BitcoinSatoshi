@@ -16,10 +16,21 @@ function showUser(pubKey) {
     .then(user => {
       if (!user) return;
 
-      $("#public-key").text(user.pubKey);
-      var $list = $("#traders").empty();
+      document.getElementById("public-key").innerHTML = "Transaction Details: " + pubKey;
+      var $sentList = $("#traders").empty();
+	  var $receivedList = $("#received").empty();
       user.transactions.forEach(transactions => {
-        $list.append($("<li>" + transactions.PublicKeyS + " " + transactions.bitcoin + " " +  transactions.PublicKeyR + "</li>"));
+		if (transactions.PublicKeyS == pubKey) {
+			$sentList.append(
+				$("<li>" + transactions.PublicKeyR + " " + 
+				Math.round(transactions.bitcoin * 100) / 100  +
+				"</li>"));
+		} else {
+			$receivedList.append(
+				$("<li>" + transactions.PublicKeyS + " " + 
+				Math.round(transactions.bitcoin * 100) / 100 + 
+				"</li>"));
+		}
       });
     }, "json");
 }
@@ -33,7 +44,10 @@ function search() {
 
       if (users) {
         users.forEach(user => {
-          $("<tr><td class='user'>" + user.PublicKey + "</td><td>" + user.revenue + "</td><td>" + user.loss + "</td></tr>").appendTo(t)
+          $("<tr><td class='user'>" + user.PublicKey + "</td><td>" + 
+			Math.round(user.revenue * 100) / 100 + "</td><td>" + 
+			Math.round(user.loss * 100) / 100 + "</td></tr>")
+			.appendTo(t)
             .click(function() {
               showUser($(this).find("td.user").text());
             })

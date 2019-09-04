@@ -31,12 +31,11 @@ function getUser(pubKey) {
   var session = driver.session();
   return session
     .run(
-      "MATCH (u:User) \
-	  WHERE u.PublicKey STARTS WITH {pubKey}\
-      OPTIONAL MATCH path = (u)-[r]->(gaveto:User) \
-      RETURN u.PublicKey AS PublicKey, \
-      collect([u,g,gaveto]) AS transactions \
-      LIMIT 1", {pubKey})
+      "MATCH (u:User)-[r]-(v:User) \
+	  WHERE u.PublicKey == {pubKey} OR v.PublicKey == {pubKey}\
+      collect([u.PublicKey,r.Value,v.PublicKey]) AS transactions \
+	  LIMIT 10 \
+      ", {pubKey})
     .then(result => {
       session.close();
 
@@ -55,9 +54,9 @@ function getUser(pubKey) {
 function getGraph() {
   var session = driver.session();
   return session.run(
-    'MATCH path = (u:User)-[g:GIVES]->(gaveto:User) \
+    'MATCH path = (u:User)-[g:GIVES]-(gaveto:User) \
     RETURN u.PublicKey, g.Value, gaveto.PublicKey \
-    LIMIT {limit}', {limit: 100})
+    LIMIT {limit}', {limit: 10})
     .then(results => {
       session.close();
       var nodes = [], rels = [], i = 0;
