@@ -31,10 +31,14 @@ function getUser(pubKey) {
   var session = driver.session();
   return session
     .run(
-      "MATCH (u:User)-[r]-(v:User) \
-	  WHERE u.PublicKey == {pubKey} OR v.PublicKey == {pubKey}\
-      collect([u.PublicKey,r.Value,v.PublicKey]) AS transactions \
-	  LIMIT 10 \
+      "MATCH (sent:User\{PublicKey: {pubKey}\})-[r]->(v) \
+		WHERE NOT v.PublicKey STARTS WITH \"1dice\" \
+		WITH sent as sent, r as rel, v as other \
+		MATCH (receive:User\{PublicKey: {pubKey}\})<-[r]-(v) \
+		WHERE NOT v.PublicKey STARTS WITH \"1dice\" \
+		WITH sent as sent, rel as rel, other as other,r as rell,v as otherr \
+		RETURN collect([sent.PublicKey,rel.Value,other.PublicKey]) + \
+		collect([otherr.PublicKey,rell.Value,sent.PublicKey]) as transactions\
       ", {pubKey})
     .then(result => {
       session.close();
