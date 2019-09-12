@@ -2,7 +2,7 @@ var _ = require('lodash');
 
 function UserCast(trade) {
   _.extend(this, {
-    transactions: trade.map(function (c) {
+    transactions: trade.map(function(c) {
       return {
         PublicKeyS: c[0],
         bitcoin: c[1],
