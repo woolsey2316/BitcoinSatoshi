@@ -9,8 +9,8 @@ var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "bitcoin
 function searchUsers(queryString) {
   var session = driver.session();
   return session.run(
-      "MATCH (u:User) WHERE u.PublicKey STARTS WITH {PublicKey} \
-      RETURN u LIMIT 10", {
+      "MATCH (u:User) WHERE u.PublicKey STARTS WITH \"1dice\" \
+      RETURN u ORDER BY u.revenue DESCENDING", {
         PublicKey: queryString
       }
     )
@@ -30,14 +30,10 @@ function getUser(pubKey) {
   var session = driver.session();
   return session
     .run(
-      "MATCH (sent:User\{PublicKey: {pubKey}\})-[r]->(v) \
-        WHERE NOT v.PublicKey STARTS WITH \"1dice\" \
-    		WITH sent as sent, r as rel, v as other \
-    		MATCH (receive:User\{PublicKey: {pubKey}\})<-[r]-(v) \
-    		WHERE NOT v.PublicKey STARTS WITH \"1dice\" \
-    		WITH sent as sent, rel as rel, other as other,r as rell,v as otherr \
-    		RETURN collect([sent.PublicKey,rel.Value,other.PublicKey]) + \
-    		collect([otherr.PublicKey,rell.Value,sent.PublicKey]) as transactions", {
+      "MATCH (sent:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(v) \
+        WHERE sent.PublicKey = {pubKey} OR v.PublicKey = {pubKey} \
+    		WITH sent as sent, b as bit, v as other \
+    		RETURN collect([sent.PublicKey,bit.value,other.PublicKey]) as transactions", {
         pubKey
       })
     .then(result => {
@@ -57,8 +53,8 @@ function getUser(pubKey) {
 function getGraph(pubKey) {
   var session = driver.session();
   return session.run(
-      "MATCH (u:User\{PublicKey:{pubKey}\})-[g:GIVES]-(gaveto:User) \
-    RETURN u.PublicKey, g.Value, gaveto.PublicKey", {
+      "MATCH (u:User\{PublicKey:{pubKey}\})-[g:GIVES]-(b:Bitcoin)-[:SENDS]-(gaveto:User) \
+    RETURN u.PublicKey, b.value, gaveto.PublicKey", {
         pubKey
       })
     .then(results => {
@@ -100,9 +96,23 @@ function getGraph(pubKey) {
 function getChordDiagram(pubKey) {
   var session = driver.session();
   return session.run(
-      "MATCH (u:User)-[g:GIVES]->(gaveto:User) \
+      "MATCH (u:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(gaveto:User) \
       WHERE gaveto.PublicKey STARTS WITH \"1dice\" AND u.PublicKey STARTS WITH \"1dice\" \
-    RETURN u.PublicKey as sender, SUM(g.Value) as bitcoin, gaveto.PublicKey as receiver", {
+    RETURN u.PublicKey as sender, b.value as bitcoin, gaveto.PublicKey as receiver", {
+        pubKey
+      })
+    .then(results => {
+      session.close();
+      return results;
+    });
+}
+
+function getLineChart(pubKey) {
+  var session = driver.session();
+  return session.run(
+      "MATCH (u:User\{PublicKey: {pubKey}\})-[:SENDS]-(b:Bitcoin)-[:GIVES]-(gaveto:User) \
+      WHERE gaveto.PublicKey STARTS WITH \"1dice\" AND u.PublicKey STARTS WITH \"1dice\" \
+    RETURN u.PublicKey as sender, b.value as bitcoin, gaveto.PublicKey as receiver", {
         pubKey
       })
     .then(results => {
@@ -115,3 +125,4 @@ exports.searchUsers = searchUsers;
 exports.getUser = getUser;
 exports.getGraph = getGraph;
 exports.getChordDiagram = getChordDiagram;
+exports.getLineChart = getLineChart;

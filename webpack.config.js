@@ -17,6 +17,8 @@ module.exports = {
   entry: {
     app: './src/app.js'
   },
+  
+  watch:true,
 
   output: {
     filename: 'app.js',

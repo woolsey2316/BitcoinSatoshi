@@ -26,6 +26,7 @@
     "clean": "rimraf build && rimraf build",
     "build": "webpack -p",
     "start": "webpack-dev-server -p",
-    "dev": "webpack-dev-server"
+    "dev": "webpack-dev-server",
+	"watch": "webpack --watch"
   }
 }
