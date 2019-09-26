@@ -1,28 +1,41 @@
 var api = require('./neo4jApi');
 
 $(function() {
-  search();
-
+  search()
   $("#search").submit(e => {
     e.preventDefault();
     search();
   });
 });
 
-function showUser(pubKey) {
+function showTransaction(pubKey) {
   api
-    .getUser(pubKey)
-    .then(user => {
-      if (!user) return;
+    .getTransactionLosses(pubKey)
+    .then(res => {
+      if (!res) return;
       document.getElementById("public-key").innerHTML = "Transaction log: " + pubKey;
-      var $sentList = $("#traders").empty();
-      user.transactions.forEach(transaction => {
+      var $sentList = $("#senders").empty();
+      res.transactions.forEach(transaction => {
           $sentList.append(
-            $("<tr><td class='user'>" + user.PublicKey + "</td><td>" +
-                Math.round(user.revenue * 100) / 100 + "</td><td>" +
-                Math.round(user.loss * 100) / 100 + "</td></tr>"));
+            $("<tr><td class='user'>" + transaction.PublicKey + "</td><td>" +
+                transaction.txs + "</td><td>" +
+                Math.round(transaction.bitcoin * 100) / 100 + "</td></tr>"));
+
       });
     });
+
+    api
+      .getTransactionWinnings(pubKey)
+      .then(res => {
+        if (!res) return;
+        var $receiverList = $("#receivers").empty();
+        res.transactions.forEach(transaction => {
+            $receiverList.append(
+              $("<tr><td class='user'>" + transaction.PublicKey + "</td><td>" +
+              transaction.txs + "</td><td>" +
+              Math.round(transaction.bitcoin * 100) / 100 + "</td></tr>"));
+        });
+      });
 }
 
 function search() {
@@ -40,15 +53,15 @@ function search() {
             .appendTo(t)
             .click(function() {
               var pubKey = $(this).find("td.user").text();
-              showUser(pubKey);
+              showTransaction(pubKey);
               renderLineChart(pubKey);
-              renderGraph(pubKey);
-              renderChordDiagram(pubKey);
+              //renderGraph(pubKey);
+              //renderChordDiagram(pubKey);
             })
         });
         var first = users[0];
         if (first) {
-          showUser(first.PublicKey);
+          showTransaction(first.PublicKey);
         }
       }
     });
@@ -56,31 +69,38 @@ function search() {
 
 function renderGraph(pubKey) {
   var width = 1000,
-    height = 800;
-  var force = d3.layout.force()
-    .charge(-200).linkDistance(30).size([width, height]);
+    height = 800
 
-  var svg = d3.select("#graph").append("svg")
+  var svg = d3.select("#graph svg")
     .attr("width", "100%").attr("height", "100%")
     .attr("pointer-events", "all");
 
   api
     .getGraph(pubKey)
     .then(graph => {
-      force.nodes(graph.nodes).links(graph.links);
+
+      var simulation = d3.forceSimulation(graph.nodes)
+        .force("charge", d3.forceManyBody().strength(-700).distanceMin(1000).distanceMax(1000))
+        .force("link", d3.forceLink(graph.links).id(function(d) { return d.index }))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("y", d3.forceY(0.001))
+        .force("x", d3.forceX(0.001))
+        //v3 -- .charge(-700).linkDistance(30).size([width, height]);
 
       var link = svg.selectAll(".link")
-        .data(graph.links).enter()
-        .append("line").attr("class", "link");
+        .data(graph.links)
+        .enter()
+        .append("line")
+        .attr("class", "link");
 
       var node = svg.selectAll(".node")
-        .data(graph.nodes).enter()
+        .data(graph.nodes)
+        .enter()
         .append("circle")
         .attr("class", d => {
           return "node " + d.label
         })
-        .attr("r", 10)
-        .call(force.drag);
+        .call(simulation.drag);
 
       // html pubKey attribute
       node.append("pubKey")
@@ -89,7 +109,7 @@ function renderGraph(pubKey) {
         });
 
       // force feed algo ticks
-      force.on("tick", () => {
+      simulation.on("tick", () => {
         link.attr("x1", d => {
           return d.source.x;
         }).attr("y1", d => {
@@ -114,24 +134,24 @@ function renderChordDiagram(pubKey) {
     r0 = r1 - 120
 
   var chord = d3.chord()
-    .padding(.04)
     .padAngle(.01)
     .sortSubgroups(d3.descending)
     .sortChords(d3.descending);
 
-  var arc = d3.svg.arc()
+  var arc = d3.arc()
     .innerRadius(r0)
     .outerRadius(r0 + 20);
 
-  var svg = d3.select("#graph").append("svg")
+  var svg = d3.select("#graph svg")
     .attr("width", r1 * 2)
-    .attr("height", r1 * 2)
-    .append("g")
+    .attr("height", r1 * 2);
+
+  var g = d3.select("#graph svg")
     .attr("transform", "translate(" + (r1 + 10) + "," + (r1 + 10) + ")");
 
   function fade(opacity) {
     return function(g, i) {
-      svg.selectAll("g path.chord")
+      svg.selectAll("#graph g path.chord")
         .filter(function(d) {
           return d.source.index != i && d.target.index != i;
         })
@@ -207,9 +227,6 @@ function renderChordDiagram(pubKey) {
           })
           .attr("d", arc);
 
-        console.log("arc is " + arc);
-        console.log("g with arc appended " + g);
-
         g.append("text")
           .each(function(d) {
             d.angle = (d.startAngle + d.endAngle) / 2;
@@ -246,8 +263,8 @@ function renderChordDiagram(pubKey) {
 }
 
 function renderLineChart(pubKey) {
-  var date = {};
-  var bitcoin = {};
+  var date = [];
+  var bitcoin = [];
   var data = {
     date: {},
     value: {}
@@ -356,7 +373,7 @@ function renderLineChart(pubKey) {
   function updateChart() {
 
     // What are the selected boundaries?
-    extent = d3.event.selection
+    var extent = d3.event.selection
 
     // If no selection, back to initial coordinate. Otherwise, update X axis domain
     if (!extent) {

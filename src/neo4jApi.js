@@ -26,14 +26,32 @@ function searchUsers(queryString) {
     });
 }
 
-function getUser(pubKey) {
+function getTransactionWinnings(pubKey) {
   var session = driver.session();
   return session
     .run(
-      "MATCH (sent:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(v) \
-        WHERE sent.PublicKey = {pubKey} OR v.PublicKey = {pubKey} \
-    		WITH sent as sent, b as bit, v as other \
-    		RETURN collect([sent.PublicKey,bit.value,other.PublicKey]) as transactions", {
+      "MATCH (sent:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(v) WHERE v.PublicKey = {pubKey} WITH sent as sent, SUM(b.value) as winnings, count(b) as txs ORDER BY txs DESC RETURN collect([sent.PublicKey, txs, winnings]) as transactions LIMIT 5", {
+        pubKey
+      })
+    .then(result => {
+      session.close();
+
+      if (_.isEmpty(result.records))
+        return null;
+      var record = result.records[0];
+      return new UserCast(record.get('transactions'));
+    })
+    .catch(error => {
+      session.close();
+      throw error;
+    });
+}
+
+function getTransactionLosses(pubKey) {
+  var session = driver.session();
+  return session
+    .run(
+      "MATCH (sent:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(v) WHERE sent.PublicKey = {pubKey} WITH v as v, SUM(b.value) as winnings, count(b) as txs ORDER BY txs DESC RETURN collect([v.PublicKey, txs, winnings]) as transactions LIMIT 5", {
         pubKey
       })
     .then(result => {
@@ -71,8 +89,8 @@ function getGraph(pubKey) {
 
         var PublicKeyR = res.get('gaveto.PublicKey');
         var user = {
-          "PublicKey": PublicKeyR,
-          label: 'User'
+          label: PublicKeyR,
+          r: res.get('b.value')
         };
         var target = _.findIndex(nodes, user);
         if (target == -1) {
@@ -110,9 +128,12 @@ function getChordDiagram(pubKey) {
 function getLineChart(pubKey) {
   var session = driver.session();
   return session.run(
-      "MATCH (u:User\{PublicKey: {pubKey}\})-[:SENDS]-(b:Bitcoin)-[:GIVES]-(gaveto:User) \
-      WHERE gaveto.PublicKey STARTS WITH \"1dice\" AND u.PublicKey STARTS WITH \"1dice\" \
-    RETURN u.PublicKey as sender, b.value as bitcoin, gaveto.PublicKey as receiver", {
+    "MATCH (u:User\{PublicKey: {pubKey}\})-[:SENDS]-(b:Bitcoin) \
+    WITH date(datetime({epochmillis:b.date})) as time, b \
+    MATCH (btc:Bitcoin)-[:GIVES]-(u:User\{PublicKey: {pubKey}\}) \
+    WITH date(datetime({epochmillis:btc.date})) as time, b, btc \
+    RETURN time, sum(btc.value) - sum(b.value) as profit \
+    ORDER BY time ASCENDING", {
         pubKey
       })
     .then(results => {
@@ -122,7 +143,8 @@ function getLineChart(pubKey) {
 }
 
 exports.searchUsers = searchUsers;
-exports.getUser = getUser;
+exports.getTransactionWinnings = getTransactionWinnings;
+exports.getTransactionLosses = getTransactionLosses;
 exports.getGraph = getGraph;
 exports.getChordDiagram = getChordDiagram;
 exports.getLineChart = getLineChart;

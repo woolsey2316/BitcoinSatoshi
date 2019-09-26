@@ -14,11 +14,11 @@ var HtmlWebpackPlugin = require('html-webpack-plugin');
  * @return {object} Webpack configuration
  */
 module.exports = {
+	mode: 'development',
+	
   entry: {
     app: './src/app.js'
   },
-  
-  watch:true,
 
   output: {
     filename: 'app.js',

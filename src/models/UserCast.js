@@ -4,9 +4,9 @@ function UserCast(trade) {
   _.extend(this, {
     transactions: trade.map(function(c) {
       return {
-        PublicKeyS: c[0],
-        bitcoin: c[1],
-        PublicKeyR: c[2]
+        PublicKey: c[0],
+        txs: c[1],
+        bitcoin: c[2]
       }
     })
   });
