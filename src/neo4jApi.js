@@ -82,14 +82,14 @@ function getGraph(pubKey) {
         i = 0;
       results.records.forEach(res => {
         nodes.push({
-          PublicKey: res.get('u.PublicKey')
+          publicKey: res.get('u.PublicKey')
         });
         var source = i;
         i++;
 
         var PublicKeyR = res.get('gaveto.PublicKey');
         var user = {
-          label: PublicKeyR,
+          publicKey: PublicKeyR,
           r: res.get('b.value')
         };
         var target = _.findIndex(nodes, user);

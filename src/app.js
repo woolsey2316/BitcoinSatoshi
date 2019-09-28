@@ -53,7 +53,7 @@ function search() {
             .appendTo(t)
             .click(function() {
               var pubKey = $(this).find("td.user").text();
-              showTransaction(pubKey);
+              //showTransaction(pubKey);
               renderLineChart(pubKey);
               //renderGraph(pubKey);
               //renderChordDiagram(pubKey);
@@ -61,7 +61,8 @@ function search() {
         });
         var first = users[0];
         if (first) {
-          showTransaction(first.PublicKey);
+          renderLineChart(first.PublicKey);
+          console.log("finished");
         }
       }
     });
@@ -91,7 +92,7 @@ function renderGraph(pubKey) {
         .data(graph.links)
         .enter()
         .append("line")
-        .attr("class", "link");
+        .attr("class", "link")
 
       var node = svg.selectAll(".node")
         .data(graph.nodes)
@@ -216,7 +217,9 @@ function renderChordDiagram(pubKey) {
         var g = svg.selectAll("g.group")
           .data(chord.groups)
           .enter().append("g")
-          .attr("class", "group");
+          .attr("class", "group")
+          .exit()
+          .remove();
 
         g.append("path")
           .style("fill", function(d) {
@@ -256,30 +259,30 @@ function renderChordDiagram(pubKey) {
           .style("fill", function(d, i) {
             return colours(i);
           })
-          .attr("d", d3.svg.chord().radius(r0));
+          .attr("d", d3.svg.chord().radius(r0))
+          .exit()
+          .remove()
       });
   }
   draw();
 }
 
 function renderLineChart(pubKey) {
-  var date = [];
-  var bitcoin = [];
   var data = {
-    date: {},
-    value: {}
+    date: [],
+    value: []
   };
 
   api
     .getLineChart(pubKey)
     .then(results => {
       results.records.forEach(res => {
-        date.push(d3.timeParse("%Y-%m-%d")(res.date));
-        bitcoin.push(res.bitcoin);
+        console.log(res);
+        data.date.push(d3.timeParse("%Y-%m-%d")(res.date));
+        data.value.push(res.bitcoin);
       });
-      data.date = date;
-      data.value = bitcoin;
-    });
+
+    console.log(data);
 
   // set the dimensions and margins of the graph
   var margin = {
@@ -291,12 +294,11 @@ function renderLineChart(pubKey) {
     width = 460 - margin.left - margin.right,
     height = 400 - margin.top - margin.bottom;
 
-  // append the svg object to the body of the page
-  var svg = d3.select("#lineGraph")
-    .append("svg")
+  var svg = d3.select("#lineGraph svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
-    .append("g")
+
+  var g = d3.select("#lineGraph svg g")
     .attr("transform",
       "translate(" + margin.left + "," + margin.top + ")");
 
@@ -362,6 +364,27 @@ function renderLineChart(pubKey) {
     .attr("class", "brush")
     .call(brush);
 
+      // If user double click, reinitialize the chart
+  svg.on("dblclick", function() {
+    x.domain(d3.extent(data, function(d) {
+      return d.date;
+    }))
+    xAxis.transition().call(d3.axisBottom(x))
+    line
+      .select('.line')
+      .transition()
+      .attr("d", d3.line()
+        .x(function(d) {
+          return x(d.date)
+        })
+        .y(function(d) {
+          return y(d.value)
+        })
+      )
+  });
+
+  });
+
   // A function that set idleTimeOut to null
   var idleTimeout
 
@@ -400,22 +423,96 @@ function renderLineChart(pubKey) {
       )
   }
 
-  // If user double click, reinitialize the chart
-  svg.on("dblclick", function() {
-    x.domain(d3.extent(data, function(d) {
-      return d.date;
-    }))
-    xAxis.transition().call(d3.axisBottom(x))
-    line
-      .select('.line')
-      .transition()
-      .attr("d", d3.line()
-        .x(function(d) {
-          return x(d.date)
-        })
-        .y(function(d) {
-          return y(d.value)
-        })
-      )
-  });
+}
+
+function renderSankeyDiagram(pubkey) {
+
+    const svg = Document.getElementById("#sankey svg");
+
+    api.getSankeyDiagramData(pubkey).then(res => {
+
+        svg.append("g").attr("stroke", "#000")
+          .selectAll("rect").data(res.nodes)
+          .join("rect")
+          .attr("x", d => d.x0)
+          .attr("y", d => d.y0)
+          .attr("height", d => d.y1 - d.y0)
+          .attr("width", d => d.x1 - d.x0)
+          .attr("fill", d => color(d.PublicKey))
+          .append("title")
+          .text(d => '${d.name}\n${format(d.value)}');
+
+        const link = svg.append("g")
+          .attr("fill", "none")
+          .attr("stroke-opacity", 0.5)
+          .selectAll("g")
+          .data(links)
+          .join("g")
+          .style("mix-blend-mode", "multiply");
+
+        if (edgeColor === "path") {
+          const gradient = link.append("linearGradient")
+            .attr("id", d => (d.uid = DOM.uid("link")).id)
+            .attr("gradientUnits", "userSpaceOnUse")
+            .attr("x1", d => d.source.x1)
+            .attr("x2", d => d.target.x0);
+
+          gradient.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", d => color(d.source.name));
+
+          gradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", d => color(d.target.name));
+        }
+
+        link.append("path")
+          .attr("d", d3.sankeyLinkHorizontal())
+          .attr("stroke", d => edgeColor === "none" ? "#aaa" :
+            edgeColor === "path" ? d.guides :
+            edgeColor === "input" ? color(d.source.PublicKey) :
+            color(d.target.PublicKey))
+          .attr("stroke-width", d => Math.max(1, d.width));
+
+        link.append("title")
+          .text(d => '${d.source.name} -> $d.target.name}\n${format(d.value)}');
+
+        svg.append("g")
+          .stlye("font", "10px sans-serif")
+          .selectAll("text")
+          .data(nodes)
+          .join("text")
+          .attr("x", d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+          .attr("y", d => (d.y1 + d.y0) / 2)
+          .attr("dy", "0.35em")
+          .attr("text-anchor", d => d.x0 < width / 2 ? "start" : "end")
+          .text(d => d.name);
+      });
+
+function sankey() {
+      const sankey = d3.sankey()
+        .nodeAlign(d3['sankey${align[0].toUpperCase()}${align.slice(1)}'])
+        .nodeWidth(15)
+        .nodePadding(10)
+      .extent([[1, 5], [width - 1, height - 5]]);
+
+  return ({
+      nodes,
+      links
+    }) => sankey({
+      nodes: nodes.map(d => Object.assign({}, d)),
+      links: links.map(d => Object.assign({}, d))
+    });
+  }
+
+function format(d) {
+    const f = d3.format(",.0f");
+    return d => '${f(d)} Btc';
+}
+
+function color(name) {
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+    return name => color(name.replace(/  .*/, ""));
+}
+
 }
