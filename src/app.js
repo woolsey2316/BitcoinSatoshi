@@ -62,7 +62,7 @@ function search() {
         var first = users[0];
         if (first) {
           renderLineChart(first.PublicKey);
-          console.log("finished");
+          showTransaction(first.PublicKey);
         }
       }
     });
@@ -276,13 +276,15 @@ function renderLineChart(pubKey) {
   api
     .getLineChart(pubKey)
     .then(results => {
+      console.log("results : " + results);
       results.records.forEach(res => {
-        console.log(res);
-        data.date.push(d3.timeParse("%Y-%m-%d")(res.date));
-        data.value.push(res.bitcoin);
+        console.log("result item : " + res.get('profit'));
+        data.date.push(d3.timeParse("%Y-%m-%d")(res.get('time')));
+        data.value.push(res.get('profit'));
+
       });
 
-    console.log(data);
+    console.log("entire data = " + data);
 
   // set the dimensions and margins of the graph
   var margin = {
@@ -356,8 +358,7 @@ function renderLineChart(pubKey) {
       .y(function(d) {
         return y(d.value)
       })
-    )
-
+    );
   // Add the brushing
   line
     .append("g")

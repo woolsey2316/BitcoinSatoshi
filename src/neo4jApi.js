@@ -1,7 +1,7 @@
-require('file?name=[name].[ext]!../node_modules/neo4j-driver/lib/browser/neo4j-web.min.js');
-var User = require('./models/User');
-var UserCast = require('./models/UserCast');
-var _ = require('lodash');
+import 'file?name=[name].[ext]!../node_modules/neo4j-driver/lib/browser/neo4j-web.min.js';
+import User from './models/User';
+import Transaction from './models/Transaction';
+import { isEmpty, findIndex } from 'lodash';
 
 var neo4j = window.neo4j.v1;
 var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "bitcoin"));
@@ -30,16 +30,20 @@ function getTransactionWinnings(pubKey) {
   var session = driver.session();
   return session
     .run(
-      "MATCH (sent:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(v) WHERE v.PublicKey = {pubKey} WITH sent as sent, SUM(b.value) as winnings, count(b) as txs ORDER BY txs DESC RETURN collect([sent.PublicKey, txs, winnings]) as transactions LIMIT 5", {
+      "MATCH (sent:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(v) \
+      WHERE v.PublicKey = {pubKey} \
+      WITH sent as sent, SUM(b.value) as winnings, count(b) as txs \
+      ORDER BY txs DESC \
+      RETURN collect([sent.PublicKey, txs, winnings]) as transactions LIMIT 5", {
         pubKey
       })
     .then(result => {
       session.close();
 
-      if (_.isEmpty(result.records))
+      if (isEmpty(result.records))
         return null;
       var record = result.records[0];
-      return new UserCast(record.get('transactions'));
+      return new Transaction(record.get('transactions'));
     })
     .catch(error => {
       session.close();
@@ -51,16 +55,20 @@ function getTransactionLosses(pubKey) {
   var session = driver.session();
   return session
     .run(
-      "MATCH (sent:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(v) WHERE sent.PublicKey = {pubKey} WITH v as v, SUM(b.value) as winnings, count(b) as txs ORDER BY txs DESC RETURN collect([v.PublicKey, txs, winnings]) as transactions LIMIT 5", {
+      "MATCH (sent:User)-[:GIVES]-(b:Bitcoin)-[:SENDS]-(v) \
+      WHERE sent.PublicKey = {pubKey} \
+      WITH v as v, SUM(b.value) as winnings, count(b) as txs \
+      ORDER BY txs DESC \
+      RETURN collect([v.PublicKey, txs, winnings]) as transactions LIMIT 5", {
         pubKey
       })
     .then(result => {
       session.close();
 
-      if (_.isEmpty(result.records))
+      if (isEmpty(result.records))
         return null;
       var record = result.records[0];
-      return new UserCast(record.get('transactions'));
+      return new Transaction(record.get('transactions'));
     })
     .catch(error => {
       session.close();
@@ -92,7 +100,7 @@ function getGraph(pubKey) {
           publicKey: PublicKeyR,
           r: res.get('b.value')
         };
-        var target = _.findIndex(nodes, user);
+        var target = findIndex(nodes, user);
         if (target == -1) {
           nodes.push(user);
           target = i;
@@ -128,11 +136,9 @@ function getChordDiagram(pubKey) {
 function getLineChart(pubKey) {
   var session = driver.session();
   return session.run(
-    "MATCH (u:User\{PublicKey: {pubKey}\})-[:SENDS]-(b:Bitcoin) \
+    "MATCH (u:User\{PublicKey: {pubKey}\})-[]-(b:Bitcoin) \
     WITH date(datetime({epochmillis:b.date})) as time, b \
-    MATCH (btc:Bitcoin)-[:GIVES]-(u:User\{PublicKey: {pubKey}\}) \
-    WITH date(datetime({epochmillis:btc.date})) as time, b, btc \
-    RETURN time, sum(btc.value) - sum(b.value) as profit \
+    RETURN time, sum(b.value) as profit \
     ORDER BY time ASCENDING", {
         pubKey
       })
@@ -142,9 +148,15 @@ function getLineChart(pubKey) {
     });
 }
 
-exports.searchUsers = searchUsers;
-exports.getTransactionWinnings = getTransactionWinnings;
-exports.getTransactionLosses = getTransactionLosses;
-exports.getGraph = getGraph;
-exports.getChordDiagram = getChordDiagram;
-exports.getLineChart = getLineChart;
+const _searchUsers = searchUsers;
+export { _searchUsers as searchUsers };
+const _getTransactionWinnings = getTransactionWinnings;
+export { _getTransactionWinnings as getTransactionWinnings };
+const _getTransactionLosses = getTransactionLosses;
+export { _getTransactionLosses as getTransactionLosses };
+const _getGraph = getGraph;
+export { _getGraph as getGraph };
+const _getChordDiagram = getChordDiagram;
+export { _getChordDiagram as getChordDiagram };
+const _getLineChart = getLineChart;
+export { _getLineChart as getLineChart };

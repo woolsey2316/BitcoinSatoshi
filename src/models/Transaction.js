@@ -1,8 +1,8 @@
 var _ = require('lodash');
 
-function UserCast(trade) {
+function Transaction(transaction) {
   _.extend(this, {
-    transactions: trade.map(function(c) {
+    transactions: transaction.map(function(c) {
       return {
         PublicKey: c[0],
         txs: c[1],
@@ -12,4 +12,4 @@ function UserCast(trade) {
   });
 }
 
-module.exports = UserCast;
+module.exports = Transaction;
