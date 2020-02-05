@@ -50,3 +50,42 @@ overflow: auto;
 .table-wrapper-scroll-y {
 display: block;
 }
+
+.main-page {
+  display:flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+#graph {
+  width: 200px;
+  position: relative;
+}
+
+#linegraph {
+  width: 45%;
+}
+
+div.col-md-6 div.panel.panel-default {
+  width: 500px;
+}
+
+#circle circle {
+  fill: none;
+  pointer-events: all;
+}
+
+path.group {
+  fill-opacity: .8;
+}
+
+path.chord {
+  fill-opacity: .8;
+  stroke: #000;
+  stroke-width: .25px;
+}
+
+#circle:hover path.fade {
+  display: none;
+}

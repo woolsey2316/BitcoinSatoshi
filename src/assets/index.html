@@ -7,31 +7,31 @@
   <link rel="stylesheet" href="../src/assets/style.css">
 </head>
 
-<body 
-<div role="navigation" class="navbar navbar-default navbar-static-top">
-  <div class="container">
-    <div class="row">
-      <div class="col-sm-6 col-md-6">
-        <ul class="nav navbar-nav">
-          <li>
-          </li>
-        </ul>
-      </div>
-      <div class="navbar-header col-sm-6 col-md-6">
-        <div class="logo-well">
-          <a href="http://neo4j.com/developer-resources">
-            <img src="http://neo4j-contrib.github.io/developer-resources/language-guides/assets/img/logo-white.svg" alt="Neo4j World's Leading Graph Database" id="logo">
-          </a>
+<body> 
+  <div role="navigation" class="navbar navbar-default navbar-static-top">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-6 col-md-6">
+          <ul class="nav navbar-nav">
+            <li>
+            </li>
+          </ul>
         </div>
-        <div class="navbar-brand">
-          <div class="brand">Satoshi Dice Public-Key Address</div>
+        <div class="navbar-header col-sm-6 col-md-6">
+          <div class="logo-well">
+            <a href="http://neo4j.com/developer-resources">
+              <img src="http://neo4j-contrib.github.io/developer-resources/language-guides/assets/img/logo-white.svg" alt="Neo4j World's Leading Graph Database" id="logo">
+            </a>
+          </div>
+          <div class="navbar-brand">
+            <div class="brand">Satoshi Dice Public-Key Address</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-  </div>
 
-  <div class="row">
+  <div class="main-page">
     <div class="col-md-5">
       <div class="panel panel-default">
         <div class="panel-heading">Satoshi Dice Public-Key Addresses
@@ -56,7 +56,7 @@
       </div>
     </div>
 
-    <div id="graph" class="chart">
+    <div id="chordGraph" class="chart">
       <svg>
       </svg>
     </div>
@@ -72,7 +72,7 @@
       <div class="col-md-6">
         <div class="panel panel-default">
           <div class="panel-heading" id="public-key">Transaction log </div>
-          <table id="senders" class="table table-striped table-hover table-wrapper-scroll-y my-custom-scrollbar col-md-6">
+          <table id="senders" class="table table-striped table-hover table-wrapper-scroll-y my-custom-scrollbar">
             <thead>
               <tr>
                 <th>Public-Key Address</th>
@@ -91,7 +91,7 @@
       <div class="col-md-6">
         <div class="panel panel-default">
           <div class="panel-heading" id="public-key">Transaction log </div>
-          <table id="receivers" class="table table-striped table-wrapper-scroll-y my-custom-scrollbar col-md-6">
+          <table id="receivers" class="table table-striped table-wrapper-scroll-y my-custom-scrollbar">
             <thead>
               <tr>
                 <th>Public-Key Address</th>

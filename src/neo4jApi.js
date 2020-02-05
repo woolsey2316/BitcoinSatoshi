@@ -76,6 +76,19 @@ function getTransactionLosses(pubKey) {
     });
 }
 
+function getSankeyDiagramData(pubkey) {
+  var session = driver.session();
+  return session.run(
+      `MATCH (giver:User)-[:GIVES]-(b1:Bitcoin)-[:SENDS]-
+      (user:User{PublicKey:'${pubkey}'})-[:GIVES]-(b2:Bitcoin)-[:SENDS]-(gaveto:User)
+      WHERE NOT giver.PublicKey STARTS WITH "1dice"
+      RETURN {source: giver.PublicKey, target: user.PublicKey, value: b1.value}`)
+    .then(results => {
+      session.close();
+      return results;
+    });
+}
+
 function getGraph(pubKey) {
   var session = driver.session();
   return session.run(
@@ -160,3 +173,5 @@ const _getChordDiagram = getChordDiagram;
 export { _getChordDiagram as getChordDiagram };
 const _getLineChart = getLineChart;
 export { _getLineChart as getLineChart };
+const _getSankeyDiagramData = getSankeyDiagramData;
+export { _getSankeyDiagramData as getSankeyDiagramData};

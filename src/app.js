@@ -54,15 +54,16 @@ function search() {
             .click(function() {
               var pubKey = $(this).find("td.user").text();
               //showTransaction(pubKey);
-              renderLineChart(pubKey);
+              //renderLineChart(pubKey);
               //renderGraph(pubKey);
               //renderChordDiagram(pubKey);
+              renderSankeyDiagram(pubKey)
             })
         });
         var first = users[0];
         if (first) {
-          renderLineChart(first.PublicKey);
-          showTransaction(first.PublicKey);
+          //renderLineChart(first.PublicKey);
+          //showTransaction(first.PublicKey);
         }
       }
     });
@@ -72,7 +73,7 @@ function renderGraph(pubKey) {
   var width = 1000,
     height = 800
 
-  var svg = d3.select("#graph svg")
+  var svg = d3.select("#chordGraph svg")
     .attr("width", "100%").attr("height", "100%")
     .attr("pointer-events", "all");
 
@@ -131,7 +132,7 @@ function renderGraph(pubKey) {
 }
 
 function renderChordDiagram(pubKey) {
-  var r1 = 960 / 2,
+  var r1 = 1200 / 2,
     r0 = r1 - 120
 
   var chord = d3.chord()
@@ -143,16 +144,19 @@ function renderChordDiagram(pubKey) {
     .innerRadius(r0)
     .outerRadius(r0 + 20);
 
-  var svg = d3.select("#graph svg")
-    .attr("width", r1 * 2)
-    .attr("height", r1 * 2);
+  var ribbon = d3.ribbon()
+    .radius(r0);
 
-  var g = d3.select("#graph svg")
-    .attr("transform", "translate(" + (r1 + 10) + "," + (r1 + 10) + ")");
+  var svg = d3.select("#chordGraph svg")
+      .attr("width", r1 * 2)
+      .attr("height", r1 * 2)
+    .append("svg:g")
+      .attr("id","circle")
+      .attr("transform", "translate(" + (r1 + 10) + "," + (r1 + 10) + ")");
 
   function fade(opacity) {
     return function(g, i) {
-      svg.selectAll("#graph g path.chord")
+      svg.selectAll("#chordGraph svg g path.chord")
         .filter(function(d) {
           return d.source.index != i && d.target.index != i;
         })
@@ -162,10 +166,12 @@ function renderChordDiagram(pubKey) {
   }
 
   function draw() {
-    var indexByName = {},
-      nameByIndex = {},
+    var index = d3.map(),
+      name = d3.map(),
       matrix = [],
       n = 0;
+
+    var fill = d3.schemeCategory10;
 
     function publicKey(publicKey) {
       return publicKey
@@ -178,28 +184,24 @@ function renderChordDiagram(pubKey) {
           // Compute a unique index for each name.
           var sender = publicKey(res.get('sender'));
           var receiver = publicKey(res.get('receiver'));
-          console.log("iter n = " + n);
-          if (!(sender in indexByName)) {
-            nameByIndex[n] = sender;
-            indexByName[sender] = n++;
-            matrix[n - 1] = [];
-
+          if (!index.has(publicKey(sender))) {
+            name.set(n, sender);
+            matrix[n] = [];
+            index.set(sender, n++);
+            
           }
 
           receiver = publicKey(receiver);
-          if (!(receiver in indexByName)) {
-            console.log("new index, iter n = " + n + ",receiver = " + receiver);
-            nameByIndex[n] = receiver;
-            indexByName[receiver] = n++;
-            matrix[n - 1] = [];
+          if (!index.has(publicKey(receiver))) {
+            name.set(n, receiver);
+            matrix[n] = [];
+            index.set(receiver, n++);
 
-            matrix[indexByName[sender]].push(res.get('bitcoin'));
+            matrix[index.get(sender)].push(res.get('bitcoin'));
           } else {
-            console.log("index already found, iter n = " + n);
-            matrix[indexByName[sender]][indexByName[receiver]] = res.get('bitcoin');
+            matrix[index.get(sender)][index.get(receiver)] = res.get('bitcoin');
           }
         });
-        console.log("final matrix is " + matrix);
         var matrix_copy = [];
         for (var i = 0; i < n; i++) {
           matrix_copy[i] = Array.apply(null, Array(n)).map(Number.prototype.valueOf, 0);
@@ -209,24 +211,24 @@ function renderChordDiagram(pubKey) {
             if (matrix[i][j] != undefined) {
               matrix_copy[i][j] = matrix[i][j];
             }
-        console.log("final matrix, filled with zeros, is " + matrix_copy);
 
-        chord.matrix(matrix_copy);
-        console.log(matrix_copy);
+        svg.datum(chord(matrix_copy));
 
         var g = svg.selectAll("g.group")
-          .data(chord.groups)
-          .enter().append("g")
+          .data(function(chords) {
+            return chords.groups;
+          })
+          .enter().append("svg:g")
           .attr("class", "group")
-          .exit()
-          .remove();
+
+        var colours = d3.scaleOrdinal(d3.schemeCategory20c);
 
         g.append("path")
           .style("fill", function(d) {
-            return fill(d.index);
+            return colours(d.index);
           })
           .style("stroke", function(d) {
-            return fill(d.index);
+            return colours(d.index);
           })
           .attr("d", arc);
 
@@ -244,47 +246,39 @@ function renderChordDiagram(pubKey) {
               (d.angle > Math.PI ? "rotate(180)" : "");
           })
           .text(function(d) {
-            return nameByIndex[d.index];
+            return name.get(d.index);
           });
 
-        var colours = d3.scaleOrdinal(d3.schemeCategory20c);
-
         svg.selectAll("path.chord")
-          .data(chord.chords)
-          .enter().append("path")
+          .data(function(chords) {
+            return chords;
+          })
+          .enter().append("svg:path")
           .attr("class", "chord")
-          .style("stroke", function(d) {
-            return d3.rgb(fill(d.source.index)).darker();
-          })
+          .style("stroke", "grey")
           .style("fill", function(d, i) {
-            return colours(i);
+            return colours(d.index);
           })
-          .attr("d", d3.svg.chord().radius(r0))
-          .exit()
-          .remove()
+          .attr("d", ribbon.radius(r0))
+          .exit();
       });
   }
   draw();
 }
 
 function renderLineChart(pubKey) {
-  var data = {
-    date: [],
-    value: []
-  };
+  var data = [];
 
   api
     .getLineChart(pubKey)
     .then(results => {
-      console.log("results : " + results);
       results.records.forEach(res => {
-        console.log("result item : " + res.get('profit'));
-        data.date.push(d3.timeParse("%Y-%m-%d")(res.get('time')));
-        data.value.push(res.get('profit'));
+        data.push({
+          date: d3.timeParse("%Y-%m-%d")(res.get('time')),
+          value: res.get('profit')
+        });
 
       });
-
-    console.log("entire data = " + data);
 
   // set the dimensions and margins of the graph
   var margin = {
@@ -296,13 +290,13 @@ function renderLineChart(pubKey) {
     width = 460 - margin.left - margin.right,
     height = 400 - margin.top - margin.bottom;
 
-  var svg = d3.select("#lineGraph svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-
-  var g = d3.select("#lineGraph svg g")
-    .attr("transform",
-      "translate(" + margin.left + "," + margin.top + ")");
+  var svg = d3.select("#lineGraph")
+    .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform",
+            "translate(" + margin.left + "," + margin.top + ")");
 
   // Add X axis --> it is a date format
   var x = d3.scaleTime()
@@ -341,7 +335,7 @@ function renderLineChart(pubKey) {
     .on("end", updateChart) // Each time the brush selection changes, trigger the 'updateChart' function
 
   // Create the line variable: where both the line and the brush take place
-  var line = svg.append('g')
+  var line = svg.append("g")
     .attr("clip-path", "url(#clip)")
 
   // Add the line
@@ -352,20 +346,15 @@ function renderLineChart(pubKey) {
     .attr("stroke", "steelblue")
     .attr("stroke-width", 1.5)
     .attr("d", d3.line()
-      .x(function(d) {
-        return x(d.date)
-      })
-      .y(function(d) {
-        return y(d.value)
-      })
-    );
+        .x(function(d) { return x(d.date) })
+        .y(function(d) { return y(d.value) }))
   // Add the brushing
   line
     .append("g")
-    .attr("class", "brush")
-    .call(brush);
+      .attr("class", "brush")
+      .call(brush);
 
-      // If user double click, reinitialize the chart
+  // If user double click, reinitialize the chart
   svg.on("dblclick", function() {
     x.domain(d3.extent(data, function(d) {
       return d.date;
@@ -382,8 +371,6 @@ function renderLineChart(pubKey) {
           return y(d.value)
         })
       )
-  });
-
   });
 
   // A function that set idleTimeOut to null
@@ -424,13 +411,18 @@ function renderLineChart(pubKey) {
       )
   }
 
+});
+
 }
 
 function renderSankeyDiagram(pubkey) {
 
-    const svg = Document.getElementById("#sankey svg");
+    const svg = d3.select("#sankey svg");
 
     api.getSankeyDiagramData(pubkey).then(res => {
+
+      nodes = res.records.forEach(field=> {console.log(field._fields[0].value)})
+      links = res.records.forEach(field=> {console.log(field._fields[0].value)})
 
         svg.append("g").attr("stroke", "#000")
           .selectAll("rect").data(res.nodes)
@@ -447,7 +439,7 @@ function renderSankeyDiagram(pubkey) {
           .attr("fill", "none")
           .attr("stroke-opacity", 0.5)
           .selectAll("g")
-          .data(links)
+          .data(res.links)
           .join("g")
           .style("mix-blend-mode", "multiply");
 
